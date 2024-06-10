@@ -47,6 +47,9 @@ jobs:
           echo "API_HASH=12345" >> .env
 
       - name: Run container
+        env:
+          API_ID: API_ID
+          API_HASH: API_HASH
         run: |
           docker compose up -d
           docker compose ps

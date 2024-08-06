@@ -118,10 +118,17 @@ class Tapper:
                         upgraded_list = daily_combo['upgradeIds']
 
                         if not is_claimed:
-                            combo_cards = await get_combo_cards(http_client=http_client)
+                            # combo_cards = await get_combo_cards(http_client=http_client)
+                            combo_cards = {'combo': ['sleeping_hamster', 'hamster_youtube_channel', 'bisdev_team'], 'date': '06-08-24'}
 
                             cards = combo_cards['combo']
                             date = combo_cards['date']
+
+                            # checking if the received combo cards are valid and not expired. 
+                            start_bonus_round = datetime.strptime(date, "%d-%m-%y").replace(hour=15, minute=20)
+                            end_bonus_round = start_bonus_round + timedelta(days=1)
+                            now = datetime.now()
+                            combo_cards_are_valid: bool = start_bonus_round <= now < end_bonus_round
 
                             available_combo_cards = [
                                 data for data in upgrades
@@ -133,10 +140,7 @@ class Tapper:
                                 and data.get('maxLevel', data['level']) >= data['level']
                             ]
 
-                            start_bonus_round = datetime.strptime(date, "%d-%m-%y").replace(hour=15)
-                            end_bonus_round = start_bonus_round + timedelta(days=1)
-
-                            if start_bonus_round <= datetime.now() < end_bonus_round:
+                            if combo_cards_are_valid:
                                 common_price = sum([upgrade['price'] for upgrade in available_combo_cards])
                                 need_cards_count = len(cards)
                                 possible_cards_count = len(available_combo_cards)
@@ -181,6 +185,10 @@ class Tapper:
                                     if status is True:
                                         logger.success(f"{self.session_name} | Successfully claimed daily combo | "
                                                        f"Bonus: <lg>+{bonus:,}</lg>")
+                            elif not combo_cards_are_valid:
+                                logger.error(f"combo cards date is not valid. received combo cards are for: \"{date}\"")
+                        elif is_claimed:
+                            logger.info(f"Daily Combo Cards is already claimed")
 
                     await asyncio.sleep(delay=2)
 

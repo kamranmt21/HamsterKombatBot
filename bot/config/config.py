@@ -37,5 +37,7 @@ class Settings(BaseSettings):
 
     USE_RANDOM_USERAGENT: bool = False
 
+    ACTION: int = 2
+
 
 settings = Settings()

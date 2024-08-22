@@ -191,9 +191,26 @@ async def get_promo_code(app_token: str,
                          promo_id: str,
                          promo_title: str,
                          max_attempts: int,
-                         event_timeout: int,
                          session_name: str,
                          proxy: str):
+
+    # set different event_timeout for different games
+    match promo_id:
+        case "61308365-9d16-4040-8bb0-2f4a4c69074c":  # Twerk Race
+            event_timeout = 30
+        case "dc128d28-c45b-411c-98ff-ac7726fbaea4":  # Merge Away
+            event_timeout = 60
+        case "fe693b26-b342-4159-8808-15e3ff7f8767":  # My Clone Army
+            event_timeout = 120
+        case "b4170868-cef0-424f-8eb9-be0622e8e8e3":  # Chain Cube 2048
+            event_timeout = 60
+        case "c4480ac7-e178-4973-8061-9ed5b2e17954":  # Train Miner
+            event_timeout = 240
+        case "43e35910-c168-4634-ad4f-52fd764a843f":  # Bike Ride 3D
+            event_timeout = 30
+        case _:
+            event_timeout = 120
+
     headers = {
         "Content-Type": "application/json; charset=utf-8",
         "Host": "api.gamepromo.io"
@@ -217,19 +234,20 @@ async def get_promo_code(app_token: str,
         access_token = response_json.get("clientToken")
 
         if not access_token:
-            logger.debug(f"{session_name} | Can't login to api.gamepromo.io | Try with proxy | "
-                         f"Response text: {escape_html(response_text)[:256]}...")
+            logger.error(f"{session_name} | <lr>Can't login to api.gamepromo.io</lr> | Try with proxy | "
+                         f"Response text: {escape_html(response_text)[:256]}... | "
+                         f"Sleep <lw>{event_timeout}s</lw> before try again")
+            await asyncio.sleep(delay=event_timeout)
             return
 
         http_client.headers["Authorization"] = f"Bearer {access_token}"
 
         await asyncio.sleep(delay=1)
 
-        attempts = 0
+        attempts: int = 1
 
-        while attempts < max_attempts:
+        while attempts <= max_attempts:
             try:
-
                 event_id = generate_event_id()
                 json_data = {
                     "promoId": promo_id,
@@ -254,18 +272,26 @@ async def get_promo_code(app_token: str,
                     promo_code = response_json.get("promoCode")
 
                     if promo_code:
-                        logger.info(f"{session_name} | "
-                                    f"Promo code is found for <lm>{promo_title}</lm> game: <lc>{promo_code}</lc>")
+                        logger.success(f"{session_name} | "
+                                       f"Promo code is found for <lm>{promo_title}</lm> game: <lc>{promo_code}</lc> after <lr>{attempts:2}</lr> attempts")
                         return promo_code
             except Exception as error:
-                logger.debug(f"{session_name} | Error while getting promo code: {error}")
+                logger.error(f"{session_name} | Error while getting promo code: {error}")
+
+            logger.debug(
+                f"{session_name} | Attempt <lr>{attempts:2}</lr> was successful for <lm>{promo_title:15}</lm> game" +
+                (f" | Sleep <lw>{event_timeout:3}s</lw> before attempt <lr>{attempts + 1:2}</lr> to get promo code" if attempts < max_attempts else ""))
 
             attempts += 1
 
-            logger.debug(
-                f"{session_name} | Attempt <lr>{attempts}</lr> was successful for <lm>{promo_title}</lm> game | "
-                f"Sleep <lw>{event_timeout}s</lw> before <lr>{attempts + 1}</lr> attempt to get promo code")
-            await asyncio.sleep(delay=event_timeout)
+            # this condition prevents sleeping after last attempt
+            if attempts <= max_attempts: await asyncio.sleep(delay=event_timeout)
 
-    logger.debug(f"{session_name} | "
-                 f"Promo code not found out of <lw>{max_attempts}</lw> attempts for <lm>{promo_title}</lm> game ")
+    logger.error(f"{session_name} | "
+                 f"Promo code is not found out of <lr>{max_attempts:2}</lr> attempts for <lm>{promo_title:15}</lm> game | "
+                 f"Trying again...")
+
+
+def format_keys_number(today_promo_activates_count: int, keys_per_day: int) -> str:
+    return f"{'<lr>' if today_promo_activates_count <= 0 else '<lg>' if today_promo_activates_count >= keys_per_day else '<ly>'}{today_promo_activates_count}{'</lr>' if today_promo_activates_count <= 0 else '</lg>' if today_promo_activates_count >= keys_per_day else '</ly>'}<lw>/</lw><ly>{keys_per_day}</ly>"
+

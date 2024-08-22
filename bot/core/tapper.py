@@ -1,5 +1,6 @@
 import heapq
 import asyncio
+import random
 from time import time
 from random import randint
 from datetime import datetime, timedelta
@@ -12,7 +13,7 @@ from bot.config import settings
 from bot.utils.logger import logger
 from bot.utils.proxy import check_proxy
 from bot.utils.tg_web_data import get_tg_web_data
-from bot.utils.scripts import decode_cipher, get_headers, get_mini_game_cipher, get_promo_code
+from bot.utils.scripts import decode_cipher, get_headers, get_mini_game_cipher, get_promo_code, format_keys_number
 from bot.exceptions import InvalidSession
 
 from bot.api.auth import login
@@ -100,15 +101,21 @@ class Tapper:
                     logger.info(f"{self.session_name} | IP: <lw>{ip}</lw> | Country: <le>{country_code}</le> | "
                                 f"City: <lc>{city_name}</lc> | Network Provider: <lg>{asn_org}</lg>")
 
-                    last_passive_earn = int(profile_data.get('lastPassiveEarn', 0))
-                    earn_on_hour = int(profile_data.get('earnPassivePerHour', 0))
+                    last_passive_earn: int = int(profile_data.get('lastPassiveEarn', 0))
+                    earn_on_hour: int = int(profile_data.get('earnPassivePerHour', 0))
+                    estimated_offline_time: str = f"{(last_passive_earn/earn_on_hour):.2} hour" if (last_passive_earn/earn_on_hour) < 3 else "3 hour or more"
                     total_keys = profile_data.get('totalKeys', 0)
-
-                    logger.info(f"{self.session_name} | Last passive earn: <lg>+{last_passive_earn:,}</lg> | "
-                                f"Earn every hour: <ly>{earn_on_hour:,}</ly> | Total keys: <le>{total_keys}</le>")
+                    total_coins: int = int(profile_data.get('totalCoins', 0))
 
                     available_energy = profile_data.get('availableTaps', 0)
                     balance = int(profile_data.get('balanceCoins', 0))
+
+                    logger.info(f"{self.session_name} | Last passive earn: <lg>+{last_passive_earn:,}</lg> | "
+                                f"Earn every hour: <ly>{earn_on_hour:,}</ly> | "
+                                f"Estimated offline time: <lr>{estimated_offline_time}</lr> | "
+                                f"Balance: <lc>{balance:,}</lc> | "
+                                f"Total coins: <le>{total_coins:,}</le> | "
+                                f"Total keys: <le>{total_keys}</le>")
 
                     upgrades = upgrades_data['upgradesForBuy']
                     daily_combo = upgrades_data.get('dailyCombo')
@@ -118,43 +125,58 @@ class Tapper:
                         upgraded_list = daily_combo['upgradeIds']
 
                         if not is_claimed:
-                            # combo_cards = await get_combo_cards(http_client=http_client)
-                            combo_cards = {'combo': ['sleeping_hamster', 'hamster_youtube_channel', 'bisdev_team'], 'date': '06-08-24'}
+                            combo_cards = await get_combo_cards(http_client=http_client)
+                            # combo_cards = {'combo': ['healthy_hamster', 'hamster_youtube_gold_button', 'partnership_program'], 'date': '07-08-24'}
 
                             cards = combo_cards['combo']
                             date = combo_cards['date']
 
-                            # checking if the received combo cards are valid and not expired. 
+                            # checking if the received combo cards are valid and not expired.
                             start_bonus_round = datetime.strptime(date, "%d-%m-%y").replace(hour=15, minute=20)
                             end_bonus_round = start_bonus_round + timedelta(days=1)
                             now = datetime.now()
                             combo_cards_are_valid: bool = start_bonus_round <= now < end_bonus_round
 
-                            available_combo_cards = [
-                                data for data in upgrades
-                                if data['isAvailable'] is True
-                                   and data['id'] in cards
-                                   and data['id'] not in upgraded_list
-                                   and data['isExpired'] is False
-                                   and data.get('cooldownSeconds', 0) == 0
-                                   and data.get('maxLevel', data['level']) >= data['level']
-                            ]
-
                             if combo_cards_are_valid:
-                                common_price = sum([upgrade['price'] for upgrade in available_combo_cards])
+                                available_combo_cards = [
+                                    data for data in upgrades
+                                    if data['isAvailable'] is True
+                                       and data['id'] in cards
+                                       and data['id'] not in upgraded_list
+                                       and data['isExpired'] is False
+                                       and data.get('cooldownSeconds', 0) == 0
+                                       and data.get('maxLevel', data['level']) >= data['level']
+                                ]
+
+                                # printing available combo cards names, levels and prices
+                                text = "combo cards: "
+                                for card in available_combo_cards:
+                                    text += f"[name: \"{card['name']}\" level: {card['level']} price: {card['price']:,}] "
+                                logger.info(f"{text}")
+
                                 need_cards_count = len(cards)
-                                possible_cards_count = len(available_combo_cards)
+                                possible_cards_count = len(available_combo_cards) + len(upgraded_list)
                                 is_combo_accessible = need_cards_count == possible_cards_count
+                                cards_prices = [upgrade['price'] for upgrade in available_combo_cards]
+                                common_price = sum([upgrade['price'] for upgrade in available_combo_cards])
 
                                 if not is_combo_accessible:
                                     logger.info(f"{self.session_name} | "
                                                 f"<lr>Daily combo is not applicable</lr>, you can only purchase {possible_cards_count} of {need_cards_count} cards")
+                                    for card in available_combo_cards:
+                                        if card['condition']:
+                                            logger.info(f"{self.session_name} | "
+                                                        f"card name: {card['name']}"
+                                                        f"condition: {card['condition']}")
 
-                                if balance < common_price:
+                                elif balance < common_price:
+                                    x = ""
+                                    for price in cards_prices:
+                                        x += f"{price:,}, "
                                     logger.info(f"{self.session_name} | "
-                                                f"<lr>Daily combo is not applicable</lr>, you don't have enough coins. Need <ly>{common_price:,}</ly> coins, but your balance is <lr>{balance:,}</lr> coins")
+                                                f"<lr>Daily combo is not applicable</lr>, you don't have enough coins. Need <lr>{common_price:,} (prices: {x[:-2]})</lr> coins, but your balance is <lc>{balance:,}</lc> coins")
 
-                                if common_price < settings.MAX_COMBO_PRICE and balance > common_price and is_combo_accessible:
+                                elif common_price < settings.MAX_COMBO_PRICE and balance > common_price and is_combo_accessible:
                                     for upgrade in available_combo_cards:
                                         upgrade_id = upgrade['id']
                                         level = upgrade['level']
@@ -182,13 +204,16 @@ class Tapper:
                                     await asyncio.sleep(delay=2)
 
                                     status = await claim_daily_combo(http_client=http_client)
+
                                     if status is True:
                                         logger.success(f"{self.session_name} | Successfully claimed daily combo | "
                                                        f"Bonus: <lg>+{bonus:,}</lg>")
+
                             elif not combo_cards_are_valid:
-                                logger.error(f"combo cards date is not valid. received combo cards are for: \"{date}\"")
+                                logger.error(f"{self.session_name} | <lr>combo cards date is not valid.</lr> received combo cards are for: \"{date}\"")
+
                         elif is_claimed:
-                            logger.info(f"Daily Combo Cards is already claimed")
+                            logger.info(f"{self.session_name} | Daily Combo Cards is already claimed")
 
                     await asyncio.sleep(delay=randint(2, 4))
 
@@ -208,7 +233,7 @@ class Tapper:
 
                             if is_completed:
                                 logger.success(f"{self.session_name} | Successfully get daily reward | "
-                                               f"Days: <lm>{days}</lm> | Reward coins: <lg>+{rewards[days - 1]['rewardCoins']}</lg>")
+                                               f"Days: <lm>{days}</lm> | Reward coins: <lg>+{rewards[days - 1]['rewardCoins']:,}</lg>")
                         else:
                             logger.info(f"{self.session_name} | Daily Reward already claimed today")
 
@@ -293,36 +318,73 @@ class Tapper:
                         promo_activates = {promo['promoId']: promo['receiveKeysToday']
                                            for promo in promo_states}
 
-                        app_tokens = {
-                            "fe693b26-b342-4159-8808-15e3ff7f8767": "74ee0b5b-775e-4bee-974f-63e7f4d5bacb",
-                            "b4170868-cef0-424f-8eb9-be0622e8e8e3": "d1690a07-3780-4068-810f-9b5bbf2931b2",
-                            "c4480ac7-e178-4973-8061-9ed5b2e17954": "82647f43-3f87-402d-88dd-09a90025313f",
-                            "43e35910-c168-4634-ad4f-52fd764a843f": "d28721be-fd2d-4b45-869e-9f253b554e50"
+                        app_tokens: dict = {
+                            # promoId: appToken
+                            "61308365-9d16-4040-8bb0-2f4a4c69074c": "61308365-9d16-4040-8bb0-2f4a4c69074c",  # Twerk Race
+                            "dc128d28-c45b-411c-98ff-ac7726fbaea4": "8d1cc2ad-e097-4b86-90ef-7a27e19fb833",  # Merge Away
+                            "fe693b26-b342-4159-8808-15e3ff7f8767": "74ee0b5b-775e-4bee-974f-63e7f4d5bacb",  # My Clone Army
+                            "b4170868-cef0-424f-8eb9-be0622e8e8e3": "d1690a07-3780-4068-810f-9b5bbf2931b2",  # Chain Cube 2048
+                            "c4480ac7-e178-4973-8061-9ed5b2e17954": "82647f43-3f87-402d-88dd-09a90025313f",  # Train Miner
+                            "43e35910-c168-4634-ad4f-52fd764a843f": "d28721be-fd2d-4b45-869e-9f253b554e50"   # Bike Ride 3D
                         }
 
                         promos = promos_data.get('promos', [])
+
+                        # log received keys from each game today
                         for promo in promos:
                             promo_id = promo['promoId']
-                            app_token = app_tokens.get(promo_id)
-                            if not app_token:
-                                continue
-
                             title = promo['title']['en']
                             keys_per_day = promo['keysPerDay']
-                            keys_per_code = 1
-
                             today_promo_activates_count = promo_activates.get(promo_id, 0)
 
-                            if today_promo_activates_count >= keys_per_day:
-                                logger.info(
-                                    f"{self.session_name} | Promo Codes already claimed today for <lm>{title}</lm> game")
+                            logger.info(
+                                f"{self.session_name} | Today keys for game <lm>{(title+':'):17}</lm>"
+                                f"{format_keys_number(today_promo_activates_count, keys_per_day)} keys")
+                            if promo == promos[-1]:
+                                logger.info(f"{self.session_name} | ---------------------------------------------")
 
+                        # choosing a random game. in the current run, only one game will be done.
+                        promos_done = []
+                        promos_notdone = []
+                        promos_incomplete = []
+                        for promo in promos:
+                            promo_id = promo['promoId']
+                            keys_per_day = promo['keysPerDay']
+                            today_promo_activates_count = promo_activates.get(promo_id, 0)
+                            if today_promo_activates_count >= keys_per_day:
+                                promos_done.append(promo)
+                            elif today_promo_activates_count == 0:
+                                promos_notdone.append(promo)
+                            elif 0 < today_promo_activates_count < keys_per_day:
+                                promos_incomplete.append(promo)
+
+                        # prioritize choosing from games which 0 keys is received from.
+                        if len(promos_notdone) > 0:
+                            promo = random.choice(promos_notdone)
+                        elif len(promos_incomplete) > 0:
+                            # promo = random.choice(promos_incomplete)
+                            promo = sorted(promos_incomplete, key=lambda promo: promo['receiveKeysToday'])[0]
+                        else:
+                            promo = {}
+
+                        promo_id = promo['promoId']
+                        app_token = app_tokens.get(promo_id)
+                        if not app_token:
+                            continue
+
+                        title = promo['title']['en']
+                        keys_per_day = promo['keysPerDay']
+                        keys_per_code = 1
+                        today_promo_activates_count = promo_activates.get(promo_id, 0)
+
+                        if today_promo_activates_count >= keys_per_day:
+                            pass
+                        else:
                             while today_promo_activates_count < keys_per_day:
                                 promo_code = await get_promo_code(app_token=app_token,
                                                                   promo_id=promo_id,
                                                                   promo_title=title,
-                                                                  max_attempts=15,
-                                                                  event_timeout=20,
+                                                                  max_attempts=20,
                                                                   session_name=self.session_name,
                                                                   proxy=proxy)
 
@@ -339,12 +401,12 @@ class Tapper:
 
                                     logger.success(f"{self.session_name} | "
                                                    f"Successfully activated promo code <lc>{promo_code}</lc> in <lm>{title}</lm> game | "
-                                                   f"Get <ly>{today_promo_activates_count}</ly><lw>/</lw><ly>{keys_per_day}</ly> keys | "
+                                                   f"Get {format_keys_number(today_promo_activates_count, keys_per_day)} keys | "
                                                    f"Total keys: <le>{total_keys}</le> (<lg>+{keys_per_code}</lg>)")
                                 else:
-                                    logger.info(f"{self.session_name} | "
-                                                f"Promo code <lc>{promo_code}</lc> was wrong in <lm>{title}</lm> game | "
-                                                f"Trying again...")
+                                    logger.error(f"{self.session_name} | "
+                                                 f"Promo code <lc>{promo_code}</lc> was wrong in <lm>{title}</lm> game | "
+                                                 f"Trying again...")
 
                                 await asyncio.sleep(delay=2)
 
@@ -372,7 +434,7 @@ class Tapper:
                                     balance = int(profile_data.get('balanceCoins', 0))
                                     logger.success(f"{self.session_name} | "
                                                    f"Successfully completed <ly>{task_id}</ly> task | "
-                                                   f"Balance: <lc>{balance}</lc> (<lg>+{reward}</lg>)")
+                                                   f"Balance: <lc>{balance:,}</lc> (<lg>+{reward:,}</lg>)")
 
                                     tasks = await get_tasks(http_client=http_client)
                                 else:
@@ -465,7 +527,7 @@ class Tapper:
                             logger.success(f"{self.session_name} | "
                                            f"Successfully upgraded <le>{upgrade_id}</le> with price <lr>{price:,}</lr> to <m>{level}</m> lvl | "
                                            f"Earn every hour: <ly>{earn_on_hour:,}</ly> (<lg>+{profit:,}</lg>) | "
-                                           f"Money left: <le>{balance:,}</le>")
+                                           f"Money left: <lc>{balance:,}</lc>")
 
                             await asyncio.sleep(delay=1)
 
@@ -515,7 +577,7 @@ class Tapper:
             if settings.USE_TAPS:
                 sleep_between_clicks = randint(a=settings.SLEEP_BETWEEN_TAP[0], b=settings.SLEEP_BETWEEN_TAP[1])
 
-                logger.info(f"Sleep <lw>{sleep_between_clicks}s</lw>")
+                logger.info(f"{self.session_name} | Sleep <lw>{sleep_between_clicks}s</lw> between clicks")
                 await asyncio.sleep(delay=sleep_between_clicks)
 
 

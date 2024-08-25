@@ -190,25 +190,9 @@ async def get_promo_code(app_token: str,
                          promo_id: str,
                          promo_title: str,
                          max_attempts: int,
+                         event_timeout: int,
                          session_name: str,
                          proxy: str):
-
-    # set different event_timeout for different games
-    match promo_id:
-        case "61308365-9d16-4040-8bb0-2f4a4c69074c":  # Twerk Race
-            event_timeout = 30
-        case "dc128d28-c45b-411c-98ff-ac7726fbaea4":  # Merge Away
-            event_timeout = 60
-        case "fe693b26-b342-4159-8808-15e3ff7f8767":  # My Clone Army
-            event_timeout = 120
-        case "b4170868-cef0-424f-8eb9-be0622e8e8e3":  # Chain Cube 2048
-            event_timeout = 60
-        case "c4480ac7-e178-4973-8061-9ed5b2e17954":  # Train Miner
-            event_timeout = 240
-        case "43e35910-c168-4634-ad4f-52fd764a843f":  # Bike Ride 3D
-            event_timeout = 30
-        case _:
-            event_timeout = 120
 
     headers = {
         "Content-Type": "application/json; charset=utf-8",

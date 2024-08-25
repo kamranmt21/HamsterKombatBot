@@ -140,7 +140,6 @@ class Tapper:
 
                         if not is_claimed:
                             combo_cards = await get_combo_cards(http_client=http_client)
-                            # combo_cards = {'combo': ['healthy_hamster', 'hamster_youtube_gold_button', 'partnership_program'], 'date': '07-08-24'}
 
                             cards = combo_cards['combo']
                             date = combo_cards['date']
@@ -374,7 +373,6 @@ class Tapper:
                         if len(promos_notdone) > 0:
                             promo = random.choice(promos_notdone)
                         elif len(promos_incomplete) > 0:
-                            # promo = random.choice(promos_incomplete)
                             promo = sorted(promos_incomplete, key=lambda promo: promo['receiveKeysToday'])[0]
                         else:
                             promo = {}

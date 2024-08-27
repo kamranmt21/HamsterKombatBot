@@ -328,7 +328,7 @@ class Tapper:
                         promos_data = await get_promos(http_client=http_client)
                         promo_states = promos_data.get('states', [])
 
-                        promo_activates = {promo['promoId']: promo['receiveKeysToday']
+                        promo_activates: dict[str: int] = {promo['promoId']: promo['receiveKeysToday']
                                            for promo in promo_states}
 
                         apps_info = await get_apps_info(http_client=http_client)

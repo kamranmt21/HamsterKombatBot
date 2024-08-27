@@ -361,7 +361,7 @@ class Tapper:
 
                         # choosing a random game. in the current run, only one game will be done.
                         promos_done = []
-                        promos_notdone = []
+                        promos_not_done = []
                         promos_incomplete = []
                         for promo in promos:
                             promo_id = promo['promoId']
@@ -370,13 +370,13 @@ class Tapper:
                             if today_promo_activates_count >= keys_per_day:
                                 promos_done.append(promo)
                             elif today_promo_activates_count == 0:
-                                promos_notdone.append(promo)
+                                promos_not_done.append(promo)
                             elif 0 < today_promo_activates_count < keys_per_day:
                                 promos_incomplete.append(promo)
 
                         # prioritize choosing from games which 0 keys is received from.
-                        if len(promos_notdone) > 0:
-                            promo = random.choice(promos_notdone)
+                        if len(promos_not_done) > 0:
+                            promo = random.choice(promos_not_done)
                         elif len(promos_incomplete) > 0:
                             promo = sorted(promos_incomplete, key=lambda promo: promo_activates.get(promo['promoId']))[0]
                         else:

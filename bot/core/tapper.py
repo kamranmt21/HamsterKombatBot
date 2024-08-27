@@ -281,6 +281,11 @@ class Tapper:
                     #     start_date = daily_mini_game['startDate']
                     #     user_id = profile_data['id']
                     # 
+                    #     # if remainSecondsToNextAttempt is less than 60 seconds, sleep until next attempt
+                    #     if not is_claimed and seconds_to_next_attempt <= 60:
+                    #         if seconds_to_next_attempt > 0:
+                    #             await asyncio.sleep(seconds_to_next_attempt)
+                    # 
                     #     if not is_claimed and seconds_to_next_attempt <= 0:
                     #         game_sleep_time = randint(12, 26)
                     # 
@@ -328,7 +333,7 @@ class Tapper:
                         promos_data = await get_promos(http_client=http_client)
                         promo_states = promos_data.get('states', [])
 
-                        promo_activates = {promo['promoId']: promo['receiveKeysToday']
+                        promo_activates: dict[str: int] = {promo['promoId']: promo['receiveKeysToday']
                                            for promo in promo_states}
 
                         apps_info = await get_apps_info(http_client=http_client)
@@ -356,7 +361,7 @@ class Tapper:
 
                         # choosing a random game. in the current run, only one game will be done.
                         promos_done = []
-                        promos_notdone = []
+                        promos_not_done = []
                         promos_incomplete = []
                         for promo in promos:
                             promo_id = promo['promoId']
@@ -365,22 +370,24 @@ class Tapper:
                             if today_promo_activates_count >= keys_per_day:
                                 promos_done.append(promo)
                             elif today_promo_activates_count == 0:
-                                promos_notdone.append(promo)
+                                promos_not_done.append(promo)
                             elif 0 < today_promo_activates_count < keys_per_day:
                                 promos_incomplete.append(promo)
 
                         # prioritize choosing from games which 0 keys is received from.
-                        if len(promos_notdone) > 0:
-                            promo = random.choice(promos_notdone)
+                        if len(promos_not_done) > 0:
+                            promo = random.choice(promos_not_done)
                         elif len(promos_incomplete) > 0:
-                            promo = sorted(promos_incomplete, key=lambda promo: promo['receiveKeysToday'])[0]
+                            promo = sorted(promos_incomplete, key=lambda promo: promo_activates.get(promo['promoId']))[0]
                         else:
                             promo = {}
 
-                        promo_id = promo['promoId']
-                        app = apps.get(promo_id)
-                        app_token = app['appToken']
-                        event_timeout = app['event_timeout']
+                        app_token: str = ''
+                        if promo.__len__() > 0:
+                            promo_id: str = promo['promoId']
+                            app: dict = apps.get(promo_id)
+                            app_token: str = app['appToken']
+                            event_timeout: int = app['event_timeout']
 
                         if not app_token:
                             continue

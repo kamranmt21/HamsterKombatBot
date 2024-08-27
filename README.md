@@ -67,34 +67,34 @@
 ## 🧱 Установка
 Вы можете скачать [**Репозиторий**](https://github.com/shamhi/HamsterKombatBot) клонированием на вашу систему и установкой необходимых зависимостей:
 ```shell
-~ >>> git clone https://github.com/shamhi/HamsterKombatBot.git 
-~ >>> cd HamsterKombatBot
+git clone https://github.com/shamhi/HamsterKombatBot.git 
+cd HamsterKombatBot
 
 # Linux
-~/HamsterKombatBot >>> python3 -m venv venv
-~/HamsterKombatBot >>> source venv/bin/activate
-~/HamsterKombatBot >>> pip3 install -r requirements.txt
-~/HamsterKombatBot >>> playwright install
-~/HamsterKombatBot >>> cp .env-example .env
-~/HamsterKombatBot >>> nano .env  # Укажите ваши API_ID и API_HASH
-~/HamsterKombatBot >>> python3 main.py
+python3 -m venv venv
+source venv/bin/activate
+pip3 install -r requirements.txt
+playwright install
+cp .env-example .env
+nano .env  # Укажите ваши API_ID и API_HASH
+python3 main.py
 
 # Windows
-~/HamsterKombatBot >>> python -m venv venv
-~/HamsterKombatBot >>> venv\Scripts\activate
-~/HamsterKombatBot >>> pip install -r requirements.txt
-~/HamsterKombatBot >>> playwright install
-~/HamsterKombatBot >>> copy .env-example .env
-~/HamsterKombatBot >>> # Откройте файл .env и укажите ваши API_ID и API_HASH
-~/HamsterKombatBot >>> python main.py
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+playwright install
+copy .env-example .env
+# Откройте файл .env и укажите ваши API_ID и API_HASH
+python main.py
 ```
 > Установка в качестве Linux службы для фоновой работы бота [тут](docs/LINUX-SERVIS-INSTALL.md).
 
 ⏳ Также для быстрого запуска вы можете использовать аргументы, например:
 ```shell
-~/HamsterKombatBot >>> python3 main.py --action (1/2)
+python3 main.py --action (1/2)
 # Или
-~/HamsterKombatBot >>> python3 main.py -a (1/2)
+python3 main.py -a (1/2)
 
 # 1 - Создает сессию
 # 2 - Запускает кликер

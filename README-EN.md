@@ -28,8 +28,8 @@
 | **USE_TAPS**                 | Whether to use taps _(True / False)_                                                     |
 | **RANDOM_TAPS_COUNT**        | Random number of taps _(eg [50,200])_                                                    |
 | **SLEEP_BETWEEN_TAP**        | Random delay between taps in seconds _(eg [10,25])_                                      |
-| **USE_RANDOM_DELAY_IN_RUN**  | Использовать ли рандомную задержку при запуске _(True / False)_                          |
-| **RANDOM_DELAY_IN_RUN**      | Random delay in run _(eg [0,15])_                                                        |
+| **USE_RANDOM_DELAY_IN_RUN**  | Whether to use random delay on startup _(True / False)_                          |
+| **RANDOM_DELAY_IN_RUN**      | Random delay in run _(eg [0,60])_                                                        |
 | **USE_RANDOM_USERAGENT**     | Whether to use random User Agent every time to start _(True / False)_                    |
 
 ## 📕 Профили
@@ -67,34 +67,34 @@ Before you begin, ensure you have the following installed:
 ## 🧱 Installation
 You can download [**Repository**](https://github.com/shamhi/HamsterKombatBot) by cloning it to your system and installing the necessary dependencies:
 ```shell
-~ >>> git clone https://github.com/shamhi/HamsterKombatBot.git
-~ >>> cd HamsterKombatBot
+git clone https://github.com/shamhi/HamsterKombatBot.git
+cd HamsterKombatBot
 
 #Linux
-~/HamsterKombatBot >>> python3 -m venv venv
-~/HamsterKombatBot >>> source venv/bin/activate
-~/HamsterKombatBot >>> pip3 install -r requirements.txt
-~/HamsterKombatBot >>> playwright install
-~/HamsterKombatBot >>> cp .env-example .env
-~/HamsterKombatBot >>> nano .env # Specify your API_ID and API_HASH
-~/HamsterKombatBot >>> python3 main.py
+python3 -m venv venv
+source venv/bin/activate
+pip3 install -r requirements.txt
+playwright install
+cp .env-example .env
+nano .env # Specify your API_ID and API_HASH
+python3 main.py
 
 #Windows
-~/HamsterKombatBot >>> python -m venv venv
-~/HamsterKombatBot >>> venv\Scripts\activate
-~/HamsterKombatBot >>> pip install -r requirements.txt
-~/HamsterKombatBot >>> playwright install
-~/HamsterKombatBot >>> copy .env-example .env
-~/HamsterKombatBot >>> # Open .env file and specify your API_ID and API_HASH
-~/HamsterKombatBot >>> python main.py
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+playwright install
+copy .env-example .env
+# Open .env file and specify your API_ID and API_HASH
+python main.py
 ```
 > Installing as a Linux service for running the bot in the background [here](docs/LINUX-SERVIS-INSTALL_EN.md).
 
 ⏳ Also for quick launch you can use arguments, for example:
 ```shell
-~/HamsterKombatBot >>> python3 main.py --action (1/2)
+python3 main.py --action (1/2)
 # Or
-~/HamsterKombatBot >>> python3 main.py -a (1/2)
+python3 main.py -a (1/2)
 
 #1 - Create session
 #2 - Run clicker

@@ -382,10 +382,12 @@ class Tapper:
                         else:
                             promo = {}
 
-                        promo_id = promo['promoId']
-                        app = apps.get(promo_id)
-                        app_token = app['appToken']
-                        event_timeout = app['event_timeout']
+                        app_token: str = ''
+                        if promo.__len__() > 0:
+                            promo_id: str = promo['promoId']
+                            app: dict = apps.get(promo_id)
+                            app_token: str = app['appToken']
+                            event_timeout: int = app['event_timeout']
 
                         if not app_token:
                             continue

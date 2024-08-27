@@ -281,6 +281,11 @@ class Tapper:
                         start_date = daily_mini_game['startDate']
                         user_id = profile_data['id']
 
+                        # if remainSecondsToNextAttempt is less than 60 seconds, sleep until next attempt
+                        if not is_claimed and seconds_to_next_attempt <= 60:
+                            if seconds_to_next_attempt > 0:
+                                await asyncio.sleep(seconds_to_next_attempt)
+
                         if not is_claimed and seconds_to_next_attempt <= 0:
                             game_sleep_time = randint(12, 26)
 

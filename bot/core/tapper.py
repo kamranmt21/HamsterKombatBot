@@ -373,7 +373,7 @@ class Tapper:
                         if len(promos_notdone) > 0:
                             promo = random.choice(promos_notdone)
                         elif len(promos_incomplete) > 0:
-                            promo = sorted(promos_incomplete, key=lambda promo: promo['receiveKeysToday'])[0]
+                            promo = sorted(promos_incomplete, key=lambda promo: promo_activates.get(promo['promoId']))[0]
                         else:
                             promo = {}
 

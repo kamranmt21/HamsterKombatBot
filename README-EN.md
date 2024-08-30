@@ -32,6 +32,7 @@
 | **USE_RANDOM_DELAY_IN_RUN**        | Whether to use random delay on startup _(True / False)_                                                                                                                         |
 | **RANDOM_DELAY_IN_RUN**            | Random delay in run _(eg [0,60])_                                                                                                                                               |
 | **USE_RANDOM_USERAGENT**           | Whether to use random User Agent every time to start _(True / False)_                                                                                                           |
+| **ACTION**                         | Default action to perform _(0/1/2)_<br/>'0' for prompt action from the user each time<br/>'1' for create session<br/>'2' for run clicker                                        |
 
 ## 📕 Профили
 Possible to create a profile with unique data for each session:

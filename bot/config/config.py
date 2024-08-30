@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     MAX_COMBO_PRICE: int = 10000000
 
-    PREFER_COMBO_OVER_AUTO_UPGRADE = True
+    PREFER_COMBO_OVER_AUTO_UPGRADE: bool = True
 
     APPLY_COMBO: bool = True
     APPLY_PROMO_CODES: bool = True

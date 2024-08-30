@@ -188,7 +188,8 @@ class Tapper:
                                         x += f"{price:,}, "
                                     logger.info(f"{self.session_name} | "
                                                 f"<lr>Daily combo is not applicable</lr>, you don't have enough coins. Need <lr>{common_price:,} (prices: {x[:-2]})</lr> coins, but your balance is <lc>{balance:,}</lc> coins")
-
+                                    if settings.PREFER_COMBO_OVER_AUTO_UPGRADE:
+                                        settings.AUTO_UPGRADE = False
                                 elif common_price < settings.MAX_COMBO_PRICE and balance > common_price and is_combo_accessible:
                                     for upgrade in available_combo_cards:
                                         upgrade_id = upgrade['id']

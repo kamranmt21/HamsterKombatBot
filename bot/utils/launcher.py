@@ -73,14 +73,17 @@ async def process() -> None:
     if action is None:
         action = settings.ACTION
 
-    if action == 0:
-        action = prompt_for_action()
+    while True:
+        if action == 0:
+            action = prompt_for_action()
 
-    if action == 1:
-        await register_sessions()
-    elif action == 2:
-        tg_clients = await get_tg_clients()
-        await run_tasks(tg_clients=tg_clients)
+        if action == 1:
+            await register_sessions()
+            action = 0
+        elif action == 2:
+            tg_clients = await get_tg_clients()
+            await run_tasks(tg_clients=tg_clients)
+            exit()
 
 
 async def run_tasks(tg_clients: list[Client]):

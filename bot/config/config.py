@@ -7,10 +7,10 @@ class Settings(BaseSettings):
     API_ID: int = 0
     API_HASH: str = ''
 
-    MIN_AVAILABLE_ENERGY: int = 200
-    SLEEP_BY_MIN_ENERGY: list[int] = [1800, 3600]
+    MIN_AVAILABLE_ENERGY: int = 100
+    SLEEP_BY_MIN_ENERGY: list[int] = [1800, 2400]
 
-    AUTO_UPGRADE: bool = False
+    AUTO_UPGRADE: bool = True
     MAX_LEVEL: int = 20
     MAX_PRICE: int = 50000000
 
@@ -33,15 +33,15 @@ class Settings(BaseSettings):
     AUTO_COMPLETE_TASKS: bool = True
 
     USE_TAPS: bool = True
-    RANDOM_TAPS_COUNT: list[int] = [10, 50]
+    RANDOM_TAPS_COUNT: list[int] = [50, 200]
     SLEEP_BETWEEN_TAP: list[int] = [10, 25]
 
-    USE_RANDOM_DELAY_IN_RUN: bool = False
-    RANDOM_DELAY_IN_RUN: list[int] = [0, 15]
+    USE_RANDOM_DELAY_IN_RUN: bool = True
+    RANDOM_DELAY_IN_RUN: list[int] = [0, 60]
 
-    USE_RANDOM_USERAGENT: bool = False
+    USE_RANDOM_USERAGENT: bool = True
 
-    ACTION: int = 2
+    ACTION: int = 0
 
 
 settings = Settings()

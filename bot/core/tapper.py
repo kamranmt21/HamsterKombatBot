@@ -119,13 +119,15 @@ class Tapper:
                     earn_on_hour: int = int(profile_data.get('earnPassivePerHour', 0))
                     estimated_offline_time: str = f"{(last_passive_earn/earn_on_hour):.2} hour" if (last_passive_earn/earn_on_hour) < 3 else "3 hour or more"
                     total_keys = profile_data.get('totalKeys', 0)
+                    earn_per_hour: int = int(profile_data.get('earnPassivePerHour', 0))
+                    estimated_offline_time: str = f"{(last_passive_earn/earn_per_hour):.2} hour" if (last_passive_earn/earn_per_hour) < 3 else "3 hour or more"
                     total_coins: int = int(profile_data.get('totalCoins', 0))
 
                     available_energy = profile_data.get('availableTaps', 0)
                     balance = int(profile_data.get('balanceCoins', 0))
 
                     logger.info(f"{self.session_name} | Last passive earn: <lg>+{last_passive_earn:,}</lg> | "
-                                f"Earn every hour: <ly>{earn_on_hour:,}</ly> | "
+                                f"Earn per hour: <ly>{earn_per_hour:,}</ly> | "
                                 f"Estimated offline time: <lr>{estimated_offline_time}</lr> | "
                                 f"Balance: <lc>{balance:,}</lc> | "
                                 f"Total coins: <le>{total_coins:,}</le> | "
@@ -214,11 +216,11 @@ class Tapper:
                                                                              upgrade_id=upgrade_id)
 
                                         if status is True:
-                                            earn_on_hour += profit
+                                            earn_per_hour += profit
                                             balance -= price
                                             logger.success(f"{self.session_name} | "
                                                            f"Successfully upgraded <le>{upgrade_id}</le> with price <lr>{price:,}</lr> to <m>{level}</m> lvl | "
-                                                           f"Earn every hour: <ly>{earn_on_hour:,}</ly> (<lg>+{profit:,}</lg>) | "
+                                                           f"Earn every hour: <ly>{earn_per_hour:,}</ly> (<lg>+{profit:,}</lg>) | "
                                                            f"Money left: <le>{balance:,}</le>")
 
                                             await asyncio.sleep(delay=1)
@@ -499,7 +501,7 @@ class Tapper:
                     calc_taps = new_balance - balance
                     balance = new_balance
                     total = int(profile_data.get('totalCoins', 0))
-                    earn_on_hour = profile_data['earnPassivePerHour']
+                    earn_per_hour = profile_data['earnPassivePerHour']
 
                     logger.success(f"{self.session_name} | Successful tapped! | "
                                    f"Balance: <lc>{balance:,}</lc> (<lg>+{calc_taps:,}</lg>) | Total: <le>{total:,}</le>")
@@ -525,7 +527,7 @@ class Tapper:
                             significance = profit / max(price, 1)
 
                             free_money = balance - settings.BALANCE_TO_SAVE
-                            max_price_limit = earn_on_hour * 5
+                            max_price_limit = earn_per_hour * 5
 
                             if ((free_money * 0.7) >= price
                                     and profit > 0
@@ -552,11 +554,11 @@ class Tapper:
                         status, upgrades = await buy_upgrade(http_client=http_client, upgrade_id=upgrade_id)
 
                         if status is True:
-                            earn_on_hour += profit
+                            earn_per_hour += profit
                             balance -= price
                             logger.success(f"{self.session_name} | "
                                            f"Successfully upgraded <le>{upgrade_id}</le> with price <lr>{price:,}</lr> to <m>{level}</m> lvl | "
-                                           f"Earn every hour: <ly>{earn_on_hour:,}</ly> (<lg>+{profit:,}</lg>) | "
+                                           f"Earn every hour: <ly>{earn_per_hour:,}</ly> (<lg>+{profit:,}</lg>) | "
                                            f"Money left: <lc>{balance:,}</lc>")
 
                             await asyncio.sleep(delay=1)

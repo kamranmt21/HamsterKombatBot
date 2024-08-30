@@ -61,6 +61,12 @@ class Tapper:
         tg_web_data = await get_tg_web_data(tg_client=self.tg_client, proxy=proxy, session_name=self.session_name)
 
         if not tg_web_data:
+            if not http_client.closed:
+                await http_client.close()
+            if proxy_conn:
+                if not proxy_conn.closed:
+                    proxy_conn.close()
+
             return
 
         while True:
@@ -396,8 +402,10 @@ class Tapper:
                         if promo.__len__() > 0:
                             promo_id: str = promo['promoId']
                             app: dict = apps.get(promo_id)
-                            app_token: str = app['appToken']
-                            event_timeout: int = app['event_timeout']
+                            if not app:
+                                continue
+                            app_token: str = app.get('appToken')
+                            event_timeout: int = app.get('event_timeout')
 
                         if not app_token:
                             continue

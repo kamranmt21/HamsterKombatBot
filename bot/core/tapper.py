@@ -107,24 +107,23 @@ class Tapper:
                     ip_info = await get_ip_info(http_client=http_client)
                     skins = await get_skins(http_client=http_client)
 
-                    ip = ip_info.get('ip', 'NO')
-                    country_code = ip_info.get('country_code', 'NO')
-                    city_name = ip_info.get('city_name', 'NO')
-                    asn_org = ip_info.get('asn_org', 'NO')
+                    ip = ip_info.get('ip', 'None')
+                    country_code = ip_info.get('country_code', 'None')
+                    city_name = ip_info.get('city_name', 'None')
+                    asn_org = ip_info.get('asn_org', 'None')
 
-                    logger.info(f"{self.session_name} | IP: <lw>{ip}</lw> | Country: <le>{country_code}</le> | "
-                                f"City: <lc>{city_name}</lc> | Network Provider: <lg>{asn_org}</lg>")
+                    logger.info(f"{self.session_name} | "
+                                f"IP: <lw>{ip}</lw> | Location: <le>{country_code} / {city_name}</le> | "
+                                f"ISP: <lg>{asn_org}</lg>")
 
                     last_passive_earn: int = int(profile_data.get('lastPassiveEarn', 0))
-                    earn_on_hour: int = int(profile_data.get('earnPassivePerHour', 0))
-                    estimated_offline_time: str = f"{(last_passive_earn/earn_on_hour):.2} hour" if (last_passive_earn/earn_on_hour) < 3 else "3 hour or more"
-                    total_keys = profile_data.get('totalKeys', 0)
                     earn_per_hour: int = int(profile_data.get('earnPassivePerHour', 0))
                     estimated_offline_time: str = f"{(last_passive_earn/earn_per_hour):.2} hour" if (last_passive_earn/earn_per_hour) < 3 else "3 hour or more"
+                    total_keys: int = int(profile_data.get('totalKeys', 0))
                     total_coins: int = int(profile_data.get('totalCoins', 0))
 
-                    available_energy = profile_data.get('availableTaps', 0)
-                    balance = int(profile_data.get('balanceCoins', 0))
+                    available_energy: int = int(profile_data.get('availableTaps', 0))
+                    balance: int = int(profile_data.get('balanceCoins', 0))
 
                     logger.info(f"{self.session_name} | Last passive earn: <lg>+{last_passive_earn:,}</lg> | "
                                 f"Earn per hour: <ly>{earn_per_hour:,}</ly> | "
@@ -147,9 +146,9 @@ class Tapper:
                             date = combo_cards['date']
 
                             # checking if the received combo cards are valid and not expired.
-                            start_bonus_round = datetime.strptime(date, "%d-%m-%y").replace(hour=15, minute=20)
-                            end_bonus_round = start_bonus_round + timedelta(days=1)
-                            now = datetime.now()
+                            start_bonus_round: datetime = datetime.strptime(date, "%d-%m-%y").replace(hour=15, minute=20)
+                            end_bonus_round: datetime = start_bonus_round + timedelta(days=1)
+                            now: datetime = datetime.now()
                             combo_cards_are_valid: bool = start_bonus_round <= now < end_bonus_round
 
                             if combo_cards_are_valid:
@@ -365,7 +364,7 @@ class Tapper:
                             today_promo_activates_count = promo_activates.get(promo_id, 0)
 
                             logger.info(
-                                f"{self.session_name} | Today keys for game <lm>{(title+':'):17}</lm>"
+                                f"{self.session_name} | Keys claimed today for <lm>{(title+':'):17} game </lm>"
                                 f"{format_keys_number(today_promo_activates_count, keys_per_day)} keys")
                             if promo == promos[-1]:
                                 logger.info(f"{self.session_name} | ---------------------------------------------")

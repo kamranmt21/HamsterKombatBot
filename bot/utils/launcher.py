@@ -55,14 +55,15 @@ def prompt_for_action() -> int:
         if not action.isdigit():
             logger.warning("Action must be a number")
         elif action not in ['1', '2']:
-            logger.warning("Action must be 1 or 2")
+            logger.warning("Action must be \'1\' or \'2\'")
         else:
             return int(action)
 
 
 async def process() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--action', type=int, help='Action to perform')
+    parser.add_argument('-a', '--action', type=int, help='Action to perform (1/2)'
+                                                         '\n\'1\' for create session\n\'2\' for run clicker')
 
     print(banner)
 

@@ -189,7 +189,15 @@ class Tapper:
                                     logger.info(f"{self.session_name} | "
                                                 f"<lr>Daily combo is not applicable</lr>, you don't have enough coins. Need <lr>{common_price:,} (prices: {x[:-2]})</lr> coins, but your balance is <lc>{balance:,}</lc> coins")
                                     if settings.PREFER_COMBO_OVER_AUTO_UPGRADE:
-                                        settings.AUTO_UPGRADE = False
+                                        max_earn_until_next_combo: int = int(earn_per_hour*(end_bonus_round-now).seconds/3600)
+                                        if max_earn_until_next_combo > common_price:
+                                            logger.info(f"{self.session_name} | "
+                                                        f"set AUTO_UPGRADE to False in order to save coins for combo.")
+                                            settings.AUTO_UPGRADE = False
+                                        elif max_earn_until_next_combo > common_price:
+                                            logger.info(f"{self.session_name} | "
+                                                        f"max earn until next combo is <lr>{max_earn_until_next_combo}</lr> but total combo cards price is: <lr>{common_price}</lr>. "
+                                                        f"<lr>you can not buy combo cards for today.</lr>")
                                 elif common_price < settings.MAX_COMBO_PRICE and balance > common_price and is_combo_accessible:
                                     for upgrade in available_combo_cards:
                                         upgrade_id = upgrade['id']

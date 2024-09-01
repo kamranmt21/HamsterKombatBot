@@ -13,7 +13,7 @@ from bot.config import settings
 from bot.utils.logger import logger
 from bot.utils.proxy import check_proxy
 from bot.utils.tg_web_data import get_tg_web_data
-from bot.utils.scripts import decode_cipher, get_headers, get_promo_code, format_keys_number # get_mini_game_cipher,
+from bot.utils.scripts import decode_cipher, get_headers, get_mini_game_cipher, get_promo_code, format_keys_number
 from bot.exceptions import InvalidSession
 
 from bot.api.auth import login
@@ -30,7 +30,7 @@ from bot.api.upgrades import get_upgrades, buy_upgrade
 from bot.api.combo import claim_daily_combo, get_combo_cards
 from bot.api.cipher import claim_daily_cipher
 from bot.api.promo import get_apps_info, get_promos, apply_promo
-# from bot.api.minigame import start_daily_mini_game, claim_daily_mini_game
+from bot.api.minigame import start_daily_mini_game, claim_daily_mini_game
 from bot.api.tasks import get_tasks, get_airdrop_tasks, check_task
 from bot.api.exchange import select_exchange
 from bot.api.nuxt import get_nuxt_builds
@@ -61,6 +61,12 @@ class Tapper:
         tg_web_data = await get_tg_web_data(tg_client=self.tg_client, proxy=proxy, session_name=self.session_name)
 
         if not tg_web_data:
+            if not http_client.closed:
+                await http_client.close()
+            if proxy_conn:
+                if not proxy_conn.closed:
+                    proxy_conn.close()
+
             return
 
         while True:
@@ -92,6 +98,8 @@ class Tapper:
                     access_token_created_time = time()
 
                     account_info = await get_account_info(http_client=http_client)
+                    user_id = account_info.get('accountInfo', {}).get('id', 1)
+
                     profile_data = await get_profile_data(http_client=http_client)
 
                     config_version = http_client.headers.get('Config-Version')
@@ -107,25 +115,26 @@ class Tapper:
                     ip_info = await get_ip_info(http_client=http_client)
                     skins = await get_skins(http_client=http_client)
 
-                    ip = ip_info.get('ip', 'NO')
-                    country_code = ip_info.get('country_code', 'NO')
-                    city_name = ip_info.get('city_name', 'NO')
-                    asn_org = ip_info.get('asn_org', 'NO')
+                    ip = ip_info.get('ip', 'None')
+                    country_code = ip_info.get('country_code', 'None')
+                    city_name = ip_info.get('city_name', 'None')
+                    asn_org = ip_info.get('asn_org', 'None')
 
-                    logger.info(f"{self.session_name} | IP: <lw>{ip}</lw> | Country: <le>{country_code}</le> | "
-                                f"City: <lc>{city_name}</lc> | Network Provider: <lg>{asn_org}</lg>")
+                    logger.info(f"{self.session_name} | "
+                                f"IP: <lw>{ip}</lw> | Location: <le>{country_code} / {city_name}</le> | "
+                                f"ISP: <lg>{asn_org}</lg>")
 
                     last_passive_earn: int = int(profile_data.get('lastPassiveEarn', 0))
-                    earn_on_hour: int = int(profile_data.get('earnPassivePerHour', 0))
-                    estimated_offline_time: str = f"{(last_passive_earn/earn_on_hour):.2} hour" if (last_passive_earn/earn_on_hour) < 3 else "3 hour or more"
-                    total_keys = profile_data.get('totalKeys', 0)
+                    earn_per_hour: int = int(profile_data.get('earnPassivePerHour', 0))
+                    estimated_offline_time: str = "3 hour or more" if (last_passive_earn/earn_per_hour) >= 3 else f"{(last_passive_earn/earn_per_hour):.2} hour" 
+                    total_keys: int = int(profile_data.get('totalKeys', 0))
                     total_coins: int = int(profile_data.get('totalCoins', 0))
 
-                    available_energy = profile_data.get('availableTaps', 0)
-                    balance = int(profile_data.get('balanceCoins', 0))
+                    available_energy: int = int(profile_data.get('availableTaps', 0))
+                    balance: int = int(profile_data.get('balanceCoins', 0))
 
                     logger.info(f"{self.session_name} | Last passive earn: <lg>+{last_passive_earn:,}</lg> | "
-                                f"Earn every hour: <ly>{earn_on_hour:,}</ly> | "
+                                f"Earn per hour: <ly>{earn_per_hour:,}</ly> | "
                                 f"Estimated offline time: <lr>{estimated_offline_time}</lr> | "
                                 f"Balance: <lc>{balance:,}</lc> | "
                                 f"Total coins: <le>{total_coins:,}</le> | "
@@ -145,9 +154,9 @@ class Tapper:
                             date = combo_cards['date']
 
                             # checking if the received combo cards are valid and not expired.
-                            start_bonus_round = datetime.strptime(date, "%d-%m-%y").replace(hour=15, minute=20)
-                            end_bonus_round = start_bonus_round + timedelta(days=1)
-                            now = datetime.now()
+                            start_bonus_round: datetime = datetime.strptime(date, "%d-%m-%y").replace(hour=15, minute=20)
+                            end_bonus_round: datetime = start_bonus_round + timedelta(days=1)
+                            now: datetime = datetime.now()
                             combo_cards_are_valid: bool = start_bonus_round <= now < end_bonus_round
 
                             if combo_cards_are_valid:
@@ -188,7 +197,16 @@ class Tapper:
                                         x += f"{price:,}, "
                                     logger.info(f"{self.session_name} | "
                                                 f"<lr>Daily combo is not applicable</lr>, you don't have enough coins. Need <lr>{common_price:,} (prices: {x[:-2]})</lr> coins, but your balance is <lc>{balance:,}</lc> coins")
-
+                                    if settings.PREFER_COMBO_OVER_AUTO_UPGRADE:
+                                        max_earn_until_next_combo: int = int(earn_per_hour*(end_bonus_round-now).seconds/3600)
+                                        if max_earn_until_next_combo > common_price:
+                                            logger.info(f"{self.session_name} | "
+                                                        f"set AUTO_UPGRADE to False in order to save coins for combo.")
+                                            settings.AUTO_UPGRADE = False
+                                        elif max_earn_until_next_combo > common_price:
+                                            logger.info(f"{self.session_name} | "
+                                                        f"max earn until next combo is <lr>{max_earn_until_next_combo}</lr> but total combo cards price is: <lr>{common_price}</lr>. "
+                                                        f"<lr>you can not buy combo cards for today.</lr>")
                                 elif common_price < settings.MAX_COMBO_PRICE and balance > common_price and is_combo_accessible:
                                     for upgrade in available_combo_cards:
                                         upgrade_id = upgrade['id']
@@ -205,11 +223,11 @@ class Tapper:
                                                                              upgrade_id=upgrade_id)
 
                                         if status is True:
-                                            earn_on_hour += profit
+                                            earn_per_hour += profit
                                             balance -= price
                                             logger.success(f"{self.session_name} | "
                                                            f"Successfully upgraded <le>{upgrade_id}</le> with price <lr>{price:,}</lr> to <m>{level}</m> lvl | "
-                                                           f"Earn every hour: <ly>{earn_on_hour:,}</ly> (<lg>+{profit:,}</lg>) | "
+                                                           f"Earn every hour: <ly>{earn_per_hour:,}</ly> (<lg>+{profit:,}</lg>) | "
                                                            f"Money left: <le>{balance:,}</le>")
 
                                             await asyncio.sleep(delay=1)
@@ -274,60 +292,119 @@ class Tapper:
 
                     await asyncio.sleep(delay=randint(2, 4))
 
-                    # daily_mini_game = game_config.get('dailyKeysMiniGame')
-                    # if daily_mini_game and settings.APPLY_DAILY_MINI_GAME:
-                    #     is_claimed = daily_mini_game['isClaimed']
-                    #     seconds_to_next_attempt = daily_mini_game['remainSecondsToNextAttempt']
-                    #     start_date = daily_mini_game['startDate']
-                    #     user_id = profile_data['id']
-                    # 
-                    #     # if remainSecondsToNextAttempt is less than 60 seconds, sleep until next attempt
-                    #     if not is_claimed and seconds_to_next_attempt <= 60:
-                    #         if seconds_to_next_attempt > 0:
-                    #             await asyncio.sleep(seconds_to_next_attempt)
-                    # 
-                    #     if not is_claimed and seconds_to_next_attempt <= 0:
-                    #         game_sleep_time = randint(12, 26)
-                    # 
-                    #         encoded_body = await get_mini_game_cipher(
-                    #             http_client=http_client,
-                    #             user_id=user_id,
-                    #             session_name=self.session_name,
-                    #             start_date=start_date,
-                    #             game_sleep_time=game_sleep_time
-                    #         )
-                    # 
-                    #         if encoded_body:
-                    #             await start_daily_mini_game(http_client=http_client)
-                    # 
-                    #             logger.info(f"{self.session_name} | Sleep <lw>{game_sleep_time}s</lw> in Mini Game")
-                    #             await asyncio.sleep(delay=game_sleep_time)
-                    # 
-                    #             profile_data, daily_mini_game = await claim_daily_mini_game(http_client=http_client,
-                    #                                                                         cipher=encoded_body)
-                    # 
-                    #             await asyncio.sleep(delay=2)
-                    # 
-                    #             if daily_mini_game:
-                    #                 is_claimed = daily_mini_game['isClaimed']
-                    # 
-                    #                 if is_claimed:
-                    #                     new_total_keys = profile_data.get('totalKeys', total_keys)
-                    #                     calc_keys = new_total_keys - total_keys
-                    #                     total_keys = new_total_keys
-                    # 
-                    #                     logger.success(f"{self.session_name} | Successfully claimed Mini Game | "
-                    #                                    f"Total keys: <le>{total_keys}</le> (<lg>+{calc_keys}</lg>)")
-                    #     else:
-                    #         if is_claimed:
-                    #             logger.info(f"{self.session_name} | Daily Mini Game already claimed today")
-                    #         elif seconds_to_next_attempt > 0:
-                    #             logger.info(f"{self.session_name} | "
-                    #                         f"Need <lw>{seconds_to_next_attempt}s</lw> to next attempt in Mini Game")
-                    #         elif not encoded_body:
-                    #             logger.info(f"{self.session_name} | Key for Mini Game is not found")
-                    # 
-                    # await asyncio.sleep(delay=randint(2, 4))
+                    daily_mini_game = game_config.get('dailyKeysMiniGames')
+                    if daily_mini_game and settings.APPLY_DAILY_MINI_GAME:
+                        candles_mini_game = daily_mini_game.get('Candles')
+                        if candles_mini_game:
+                            is_claimed = candles_mini_game['isClaimed']
+                            seconds_to_next_attempt = candles_mini_game['remainSecondsToNextAttempt']
+                            start_date = candles_mini_game['startDate']
+                            mini_game_id = candles_mini_game['id']
+
+                        # if remainSecondsToNextAttempt is less than 60 seconds, sleep until next attempt
+                        if not is_claimed and seconds_to_next_attempt <= 60:
+                            if seconds_to_next_attempt > 0:
+                                await asyncio.sleep(seconds_to_next_attempt)
+
+                        if not is_claimed and seconds_to_next_attempt <= 0:
+                            game_sleep_time = randint(12, 26)
+
+                            encoded_body = await get_mini_game_cipher(
+                                user_id=user_id,
+                                start_date=start_date,
+                                mini_game_id=mini_game_id,
+                            )
+
+                            if encoded_body:
+                                await start_daily_mini_game(http_client=http_client,
+                                                            mini_game_id=mini_game_id)
+
+                                logger.info(f"{self.session_name} | "
+                                            f"Sleep <lw>{game_sleep_time}s</lw> in Mini Game <lm>{mini_game_id}</lm>")
+                                await asyncio.sleep(delay=game_sleep_time)
+
+                                profile_data, daily_mini_game, bonus = await claim_daily_mini_game(
+                                    http_client=http_client, cipher=encoded_body, mini_game_id=mini_game_id)
+
+                                await asyncio.sleep(delay=2)
+
+                                if daily_mini_game:
+                                    is_claimed = daily_mini_game['isClaimed']
+
+                                    if is_claimed:
+                                        new_total_keys = profile_data.get('totalKeys', total_keys)
+
+                                        logger.success(f"{self.session_name} | "
+                                                       f"Successfully claimed Mini Game <lm>{mini_game_id}</lm> | "
+                                                       f"Total keys: <le>{new_total_keys}</le> (<lg>+{bonus}</lg>)")
+                        else:
+                            if is_claimed:
+                                logger.info(
+                                    f"{self.session_name} | Daily Mini Game <lm>{mini_game_id}</lm> already claimed today")
+                            elif seconds_to_next_attempt > 0:
+                                logger.info(f"{self.session_name} | "
+                                            f"Need <lw>{seconds_to_next_attempt}s</lw> to next attempt in Mini Game <lm>{mini_game_id}</lm>")
+                            elif not encoded_body:
+                                logger.info(
+                                    f"{self.session_name} | Key for Mini Game <lm>{mini_game_id}</lm> is not found")
+
+                    await asyncio.sleep(delay=randint(2, 4))
+
+                    for _ in range(randint(a=settings.GAMES_COUNT[0], b=settings.GAMES_COUNT[1])):
+                        daily_mini_game = game_config.get('dailyKeysMiniGames')
+                        if daily_mini_game and settings.APPLY_DAILY_MINI_GAME:
+                            tiles_mini_game = daily_mini_game.get('Tiles')
+                            if candles_mini_game:
+                                is_claimed = tiles_mini_game['isClaimed']
+                                seconds_to_next_attempt = tiles_mini_game['remainSecondsToNextAttempt']
+                                start_date = tiles_mini_game['startDate']
+                                mini_game_id = tiles_mini_game['id']
+                                remain_points = tiles_mini_game['remainPoints']
+
+                            if not is_claimed and remain_points > 0:
+                                game_sleep_time = randint(a=settings.SLEEP_MINI_GAME_TILES[0],
+                                                          b=settings.SLEEP_MINI_GAME_TILES[1])
+                                game_score = randint(a=settings.SCORE_MINI_GAME_TILES[0],
+                                                     b=settings.SCORE_MINI_GAME_TILES[1])
+
+                                if game_score > remain_points:
+                                    continue
+
+                                encoded_body = await get_mini_game_cipher(
+                                    user_id=user_id,
+                                    start_date=start_date,
+                                    mini_game_id=mini_game_id,
+                                )
+
+                                if encoded_body:
+                                    await start_daily_mini_game(http_client=http_client, mini_game_id=mini_game_id)
+
+                                    logger.info(f"{self.session_name} | "
+                                                f"Sleep <lw>{game_sleep_time}s</lw> in Mini Game <lm>{mini_game_id}</lm>")
+                                    await asyncio.sleep(delay=game_sleep_time)
+
+                                    profile_data, daily_mini_game, bonus = await claim_daily_mini_game(
+                                        http_client=http_client, cipher=encoded_body, mini_game_id=mini_game_id)
+
+                                    await asyncio.sleep(delay=2)
+
+                                    if bonus:
+                                        new_balance = int(profile_data.get('balanceCoins', 0))
+                                        balance = new_balance
+
+                                        logger.success(f"{self.session_name} | "
+                                                       f"Successfully claimed Mini Game <lm>{mini_game_id}</lm> | "
+                                                       f"Balance <le>{balance:,}</le> (<lg>+{bonus:,}</lg>)")
+                            else:
+                                if is_claimed:
+                                    logger.info(f"{self.session_name} | Daily Mini Game already claimed today")
+                                elif seconds_to_next_attempt > 0:
+                                    logger.info(f"{self.session_name} | "
+                                                f"Need <lw>{seconds_to_next_attempt}s</lw> to next attempt in Mini Game")
+                                elif not encoded_body:
+                                    logger.info(f"{self.session_name} | Key for Mini Game is not found")
+
+                    await asyncio.sleep(delay=randint(2, 4))
 
                     if settings.APPLY_PROMO_CODES:
                         promos_data = await get_promos(http_client=http_client)
@@ -354,7 +431,7 @@ class Tapper:
                             today_promo_activates_count = promo_activates.get(promo_id, 0)
 
                             logger.info(
-                                f"{self.session_name} | Today keys for game <lm>{(title+':'):17}</lm>"
+                                f"{self.session_name} | Keys claimed today for <lm>{(title+':'):17} game </lm>"
                                 f"{format_keys_number(today_promo_activates_count, keys_per_day)} keys")
                             if promo == promos[-1]:
                                 logger.info(f"{self.session_name} | ---------------------------------------------")
@@ -386,8 +463,10 @@ class Tapper:
                         if promo.__len__() > 0:
                             promo_id: str = promo['promoId']
                             app: dict = apps.get(promo_id)
-                            app_token: str = app['appToken']
-                            event_timeout: int = app['event_timeout']
+                            if not app:
+                                continue
+                            app_token: str = app.get('appToken')
+                            event_timeout: int = app.get('event_timeout')
 
                         if not app_token:
                             continue
@@ -404,7 +483,7 @@ class Tapper:
                                 promo_code = await get_promo_code(app_token=app_token,
                                                                   promo_id=promo_id,
                                                                   promo_title=title,
-                                                                  max_attempts=20,
+                                                                  max_attempts=30,
                                                                   event_timeout=event_timeout,
                                                                   session_name=self.session_name,
                                                                   proxy=proxy)
@@ -490,7 +569,7 @@ class Tapper:
                     calc_taps = new_balance - balance
                     balance = new_balance
                     total = int(profile_data.get('totalCoins', 0))
-                    earn_on_hour = profile_data['earnPassivePerHour']
+                    earn_per_hour = profile_data['earnPassivePerHour']
 
                     logger.success(f"{self.session_name} | Successful tapped! | "
                                    f"Balance: <lc>{balance:,}</lc> (<lg>+{calc_taps:,}</lg>) | Total: <le>{total:,}</le>")
@@ -516,7 +595,7 @@ class Tapper:
                             significance = profit / max(price, 1)
 
                             free_money = balance - settings.BALANCE_TO_SAVE
-                            max_price_limit = earn_on_hour * 5
+                            max_price_limit = earn_per_hour * 5
 
                             if ((free_money * 0.7) >= price
                                     and profit > 0
@@ -543,11 +622,11 @@ class Tapper:
                         status, upgrades = await buy_upgrade(http_client=http_client, upgrade_id=upgrade_id)
 
                         if status is True:
-                            earn_on_hour += profit
+                            earn_per_hour += profit
                             balance -= price
                             logger.success(f"{self.session_name} | "
                                            f"Successfully upgraded <le>{upgrade_id}</le> with price <lr>{price:,}</lr> to <m>{level}</m> lvl | "
-                                           f"Earn every hour: <ly>{earn_on_hour:,}</ly> (<lg>+{profit:,}</lg>) | "
+                                           f"Earn every hour: <ly>{earn_per_hour:,}</ly> (<lg>+{profit:,}</lg>) | "
                                            f"Money left: <lc>{balance:,}</lc>")
 
                             await asyncio.sleep(delay=1)

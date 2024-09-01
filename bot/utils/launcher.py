@@ -22,7 +22,7 @@ options = """
 Select an action:
 
     1. Create session
-    2. Run clicker
+    2. Run bot
 """
 
 
@@ -55,14 +55,15 @@ def prompt_for_action() -> int:
         if not action.isdigit():
             logger.warning("Action must be a number")
         elif action not in ['1', '2']:
-            logger.warning("Action must be 1 or 2")
+            logger.warning("Action must be \'1\' or \'2\'")
         else:
             return int(action)
 
 
 async def process() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--action', type=int, help='Action to perform')
+    parser.add_argument('-a', '--action', type=int, help='Action to perform (1/2)'
+                                                         '\n\'1\' for create session\n\'2\' for run clicker')
 
     print(banner)
 
@@ -73,14 +74,17 @@ async def process() -> None:
     if action is None:
         action = settings.ACTION
 
-    if action == 0:
-        action = prompt_for_action()
+    while True:
+        if action == 0:
+            action = prompt_for_action()
 
-    if action == 1:
-        await register_sessions()
-    elif action == 2:
-        tg_clients = await get_tg_clients()
-        await run_tasks(tg_clients=tg_clients)
+        if action == 1:
+            await register_sessions()
+            action = 0
+        elif action == 2:
+            tg_clients = await get_tg_clients()
+            await run_tasks(tg_clients=tg_clients)
+            exit()
 
 
 async def run_tasks(tg_clients: list[Client]):

@@ -124,7 +124,7 @@ class Tapper:
 
                     last_passive_earn: int = int(profile_data.get('lastPassiveEarn', 0))
                     earn_per_hour: int = int(profile_data.get('earnPassivePerHour', 0))
-                    estimated_offline_time: str = f"{(last_passive_earn/earn_per_hour):.2} hour" if (last_passive_earn/earn_per_hour) < 3 else "3 hour or more"
+                    estimated_offline_time: str = "3 hour or more" if (last_passive_earn/earn_per_hour) >= 3 else f"{(last_passive_earn/earn_per_hour):.2} hour" 
                     total_keys: int = int(profile_data.get('totalKeys', 0))
                     total_coins: int = int(profile_data.get('totalCoins', 0))
 

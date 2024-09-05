@@ -580,7 +580,7 @@ class Tapper:
                             data for data in upgrades
                             if data['isAvailable'] is True
                                and data['isExpired'] is False
-                               and data.get('cooldownSeconds', 0) == 0
+                               and data.get('cooldownSeconds', 0) <= 60
                                and data.get('maxLevel', data['level']) >= data['level']
                         ]
 
@@ -615,6 +615,11 @@ class Tapper:
                         level = upgrade['level']
                         price = upgrade['price']
                         profit = upgrade['profitPerHourDelta']
+
+                        cooldown_seconds: int = int(upgrade.get('cooldownSeconds'))
+                        if cooldown_seconds:
+                            logger.info(f"{self.session_name} | Sleep <lw>{cooldown_seconds:2}s</lw> as cooldown upgrade <le>{upgrade_id}</le>")
+                            await asyncio.sleep(delay=cooldown_seconds)
 
                         logger.info(f"{self.session_name} | Sleep <lw>5s</lw> before upgrade <le>{upgrade_id}</le>")
                         await asyncio.sleep(delay=5)
